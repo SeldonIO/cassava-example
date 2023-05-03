@@ -1,0 +1,16 @@
+apiVersion: machinelearning.seldon.io/v1
+kind: SeldonDeployment
+metadata:
+  name: cassava
+spec:
+  protocol: v2
+  predictors:
+    - componentSpecs:
+        - spec:
+            containers:
+              - image: edshee/cassava
+                name: cassava
+      graph:
+        name: cassava
+        type: MODEL
+      name: cassava
