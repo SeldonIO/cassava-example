@@ -21,9 +21,9 @@ class CassavaModel(MLModel):
 
     # Make predictions
     predictions = self._model(payload_tensor)
-    # predictions_max = tf.argmax(predictions, axis=-1)
+    predictions_max = tf.argmax(predictions, axis=-1)
 
     # convert predictions_max to InferenceResponse
-    response_data = np.array(predictions)
+    response_data = np.array(predictions_max)
 
     return response_data

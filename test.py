@@ -1,45 +1,60 @@
-from helpers import preprocess
+from helpers import preprocess, plot
 import numpy as np
 import requests
-import json
 from mlserver.types import InferenceRequest
+from mlserver.codecs import NumpyCodec
 import tensorflow_datasets as tfds
+import tensorflow as tf
 
+
+# Inference variables
 inference_url = 'http://localhost:8080/v2/models/cassava/infer'
-batch_size = 9
+batch_size = 25
 
+# Load the dataset and class names
 dataset, info = tfds.load('cassava', with_info=True)
-
 class_names = info.features['label'].names + ['unknown']
 
-batch = dataset['validation'].map(preprocess).batch(batch_size).as_numpy_iterator()
+# Shuffle the dataset with a buffer size equal to the number of examples in the 'validation' split
+validation_dataset = dataset['validation']
+buffer_size = info.splits['validation'].num_examples
+shuffled_validation_dataset = validation_dataset.shuffle(buffer_size)
+
+# Select a batch of examples from the validation dataset
+batch = shuffled_validation_dataset.map(preprocess).batch(batch_size).as_numpy_iterator()
 examples = next(batch)
+
+# Plot the examples
+plot(examples, class_names)
 
 # Convert the TensorFlow tensor to a numpy array
 input_data = np.array(examples['image'])
-input_list = input_data.tolist()
-print(type(input_list))
-print(input_data.shape)
-print(input_data)
 
-# Build the MLServer's inference request
-request_dict = {
-    "inputs": [
-        {
-            "name": "image",  # Replace with the actual input name for the model
-            "shape": input_data.shape,
-            "datatype": "FP32",  # Use "INT32" for integer arrays, etc.
-            "data": input_list
-        }
+# Build the inference request
+inference_request = InferenceRequest(
+    inputs=[
+        NumpyCodec.encode_input(name="payload", payload=input_data)
     ]
-}
+)
 
-print(type(request_dict))
-res = requests.post(inference_url, json=request_dict)
-res_json = json.loads(res['outputs'])
+# Send the inference request and capture response
+res = requests.post(inference_url, json=inference_request.dict())
 
+# Parse the JSON string into a Python dictionary
+response_dict = res.json()
 
-print(res_json)
+# Extract the data array and shape from the output, assuming only one output or the target output is at index 0
+data_list = response_dict["outputs"][0]["data"]
+data_shape = response_dict["outputs"][0]["shape"]
+
+# Convert the data list to a numpy array and reshape it
+data_array = np.array(data_list).reshape(data_shape)
+
+# Convert the numpy array to tf tensor
+data_tensor = tf.convert_to_tensor(np.squeeze(data_array), dtype=tf.int64)
+
+# Plot the examples with their predictions
+plot(examples, class_names, data_tensor)
 
 
 
