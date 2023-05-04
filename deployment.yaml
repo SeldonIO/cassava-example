@@ -10,6 +10,7 @@ spec:
             containers:
               - image: edshee/cassava
                 name: cassava
+                imagePullPolicy: Always
       graph:
         name: cassava
         type: MODEL

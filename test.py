@@ -1,3 +1,7 @@
+# Disable tensorflow debugging output
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 from helpers import preprocess, plot
 import numpy as np
 import requests
@@ -8,10 +12,12 @@ import tensorflow as tf
 
 
 # Inference variables
-inference_url = 'http://localhost:8080/v2/models/cassava/infer'
-batch_size = 25
+# inference_url = 'http://localhost:8080/v2/models/cassava/infer'
+inference_url = 'http://localhost:8080/seldon/default/cassava/v2/models/infer'
+batch_size = 16
 
 # Load the dataset and class names
+print("Lodaing dataset...")
 dataset, info = tfds.load('cassava', with_info=True)
 class_names = info.features['label'].names + ['unknown']
 
@@ -24,9 +30,6 @@ shuffled_validation_dataset = validation_dataset.shuffle(buffer_size)
 batch = shuffled_validation_dataset.map(preprocess).batch(batch_size).as_numpy_iterator()
 examples = next(batch)
 
-# Plot the examples
-plot(examples, class_names)
-
 # Convert the TensorFlow tensor to a numpy array
 input_data = np.array(examples['image'])
 
@@ -38,7 +41,9 @@ inference_request = InferenceRequest(
 )
 
 # Send the inference request and capture response
+print("Sending Inference Request...")
 res = requests.post(inference_url, json=inference_request.dict())
+print("Got Response...")
 
 # Parse the JSON string into a Python dictionary
 response_dict = res.json()
@@ -49,6 +54,7 @@ data_shape = response_dict["outputs"][0]["shape"]
 
 # Convert the data list to a numpy array and reshape it
 data_array = np.array(data_list).reshape(data_shape)
+print("Predictions:", data_array)
 
 # Convert the numpy array to tf tensor
 data_tensor = tf.convert_to_tensor(np.squeeze(data_array), dtype=tf.int64)

@@ -11,7 +11,6 @@ classifier = hub.KerasLayer(model_path)
 batch_size = 9
 
 dataset, info = tfds.load('cassava', with_info=True)
-
 class_names = info.features['label'].names + ['unknown']
 
 batch = dataset['validation'].map(preprocess).batch(batch_size).as_numpy_iterator()
