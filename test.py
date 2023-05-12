@@ -2,6 +2,7 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
+import sys
 from helpers import preprocess, plot
 import numpy as np
 import requests
@@ -12,8 +13,14 @@ import tensorflow as tf
 
 
 # Inference variables
-# inference_url = 'http://localhost:8080/v2/models/cassava/infer'
-inference_url = 'http://localhost:8080/seldon/default/cassava/v2/models/infer'
+if len(sys.argv) < 2:
+    sys.exit("Please provide inference mode (--local or --remote)")
+if sys.argv[1] == "--local":
+    inference_url = 'http://localhost:8080/v2/models/cassava/infer'
+elif sys.argv[1] == "--remote":
+    inference_url = 'http://localhost:8080/seldon/default/cassava/v2/models/infer'
+else:
+    sys.exit("Please provide inference mode (--local or --remote)")
 batch_size = 16
 
 # Load the dataset and class names
