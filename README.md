@@ -211,3 +211,38 @@ docker push [YOUR_CONTAINER_REGISTRY]/[IMAGE_NAME]
 
 Our setup now looks like this. Where our model has been packaged and sent to a container registry:
 ![step_3](img/step_3.png)
+
+## Deploying to Kubernetes
+
+Now that we've turned our model into a production-ready API, containerized it and pushed it to a registry, it's time to deploy our model.
+
+We're going to use a popular open source framework called [Seldon Core](https://github.com/seldonio/seldon-core) to deploy our model. Seldon Core is great because it combines all of the awesome cloud-native features we get from [Kubernetes](https://kubernetes.io/) but it also adds machine-learning specific features.
+
+*This tutorial assumes you already have a Seldon Core cluster up and running. If that's not the case, head over the [installation instructions](https://docs.seldon.io/projects/seldon-core/en/latest/nav/installation.html) and get set up first. You'll also need to install the `kubectl` command line interface.*
+
+To create our deployment with Seldon Core we need to create a small configuration file that looks like this:
+
+*You can find this file named `deployment.yaml` in the base folder of this tutorial's repository.*
+
+```yaml
+apiVersion: machinelearning.seldon.io/v1
+kind: SeldonDeployment
+metadata:
+  name: cassava
+spec:
+  protocol: v2
+  predictors:
+    - componentSpecs:
+        - spec:
+            containers:
+              - image: YOUR_CONTAINER_REGISTRY/IMAGE_NAME
+                name: cassava
+                imagePullPolicy: Always
+      graph:
+        name: cassava
+        type: MODEL
+      name: cassava
+```
+
+Make sure you replace `YOUR_CONTAINER_REGISTRY` and `IMAGE_NAME` with your dockerhub username and a suitable name e.g. "bobsmith/cassava".
+
