@@ -153,7 +153,7 @@ We're now ready to serve our model with MLServer. If you navigate to the `model/
 cd model/
 ```
 
-Then you can simply run:
+Then we can simply run:
 
 ```bash
 mlserver start model/
@@ -172,3 +172,42 @@ python test.py --local
 Our setup has now evloved and looks like this:
 ![step_2](img/step_2.png)
 
+## Containerizing The Model
+
+[Containers](https://en.wikipedia.org/wiki/Containerization_(computing)) are an easy way to package our application together with it's runtime and dependencies. More importantly, containerizing our model allows it to run in a variety of different environments. 
+
+> **Note:** you will need [Docker](https://www.docker.com/) installed to run this section of the tutorial. You'll also need a [docker hub](https://hub.docker.com/) account or another container registry.
+
+Taking our model and packaging it into a container manually can be a pretty tricky process and requires knowledge of writing Dockerfiles. Thankfully MLServer removes this complexity and provides us with a simple `build` command.
+
+Before we run this command, we need to provide our dependencies in either a `requirements.txt` or a `conda.env` file. The requirements file we'll use for this example is stored in `model/requirements.txt`:
+
+```
+tensorflow==2.12.0
+tensorflow-hub==0.13.0
+```
+
+> Notice that we didn't need to include `mlserver` in our requirements? That's because the builder image has mlserver included already.
+
+We're now ready to build our container image using:
+
+```bash
+mlserver build model/ -t [YOUR_CONTAINER_REGISTRY]/[IMAGE_NAME]
+```
+
+Make sure you replace `YOUR_CONTAINER_REGISTRY` and `IMAGE_NAME` with your dockerhub username and a suitable name e.g. "bobsmith/cassava".
+
+MLServer will now build the model into a container image for us. We can check the output of this by running:
+
+```bash
+docker images
+```
+
+Finally, we want to send this container image to be stored in our container registry. We can do this by running:
+
+```bash
+docker push [YOUR_CONTAINER_REGISTRY]/[IMAGE_NAME]
+```
+
+Our setup now looks like this. Where our model has been packaged and sent to a container registry:
+![step_3](img/step_3.png)
