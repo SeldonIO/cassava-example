@@ -88,7 +88,7 @@ Here's what our setup currently looks like:
 
 The problem with running our code like we did earlier is that it's not accessible to anyone who doesn't have the python script (and all of it's dependencies). A good way to solve this is to turn our model into an API. 
 
-Typically people turn to popular python web servers like [Flask](https://github.com/pallets/flask) or [FastAPI](https://github.com/tiangolo/fastapi). This is a good approach and gives you lots of flexibility but it also requires you to do a lot of the work yourself. You need to impelement routes, set up logging, capture metrics and define an API schema among other things. A simpler way to tackle this problem is to use an inference server. For this tutorial we're going to use the open source [MLServer](https://github.com/SeldonIO/MLServer) framework. 
+Typically people turn to popular python web servers like [Flask](https://github.com/pallets/flask) or [FastAPI](https://github.com/tiangolo/fastapi). This is a good approach and gives us lots of flexibility but it also requires us to do a lot of the work ourselves. We need to impelement routes, set up logging, capture metrics and define an API schema among other things. A simpler way to tackle this problem is to use an inference server. For this tutorial we're going to use the open source [MLServer](https://github.com/SeldonIO/MLServer) framework. 
 
 MLServer supports a bunch of [inference runtimes](https://mlserver.readthedocs.io/en/stable/runtimes/index.html) out of the box, but it also supports [custom python code](https://mlserver.readthedocs.io/en/stable/user-guide/custom.html) which is what we'll use for our Tensorflow model.
 
@@ -130,9 +130,9 @@ class CassavaModel(MLModel):
     return response_data
 ```
 
-The `load()` method is used to define any logic required to set up your model for inference. In our case, we're loading the model weights into `self._model`. The `predict()` method is where we include all of our prediction logic. 
+The `load()` method is used to define any logic required to set up our model for inference. In our case, we're loading the model weights into `self._model`. The `predict()` method is where we include all of our prediction logic. 
 
-You'll notice that we've slightly modified our code from earlier (in `app.py`). The biggest change is that it is now wrapped in a single class `CassavaModel`.
+You may notice that we've slightly modified our code from earlier (in `app.py`). The biggest change is that it is now wrapped in a single class `CassavaModel`.
 
 The only other task we need to do to run our model on MLServer is to specify a `model-settings.json` file:
 
@@ -147,13 +147,7 @@ This is a simple configuration file that tells MLServer how to handle our model.
 
 ### Serving The Model
 
-We're now ready to serve our model with MLServer. If you navigate to the `model/` directory using:
-
-```bash
-cd model/
-```
-
-Then we can simply run:
+We're now ready to serve our model with MLServer. To do that we can simply run:
 
 ```bash
 mlserver start model/
@@ -163,7 +157,7 @@ MLServer will now start up, load our cassava model and provide access through bo
 
 ### Making Predictions Using The API
 
-Now that our API is up and running. Open a new terminal window and navigate back to the root of this repository. You can then send predictions to your api using the `test.py` file by running:
+Now that our API is up and running. Open a new terminal window and navigate back to the root of this repository. We can then send predictions to our api using the `test.py` file by running:
 
 ```bash
 python test.py --local
@@ -220,6 +214,8 @@ We're going to use a popular open source framework called [Seldon Core](https://
 
 *This tutorial assumes you already have a Seldon Core cluster up and running. If that's not the case, head over the [installation instructions](https://docs.seldon.io/projects/seldon-core/en/latest/nav/installation.html) and get set up first. You'll also need to install the `kubectl` command line interface.*
 
+### Creating the Deployment
+
 To create our deployment with Seldon Core we need to create a small configuration file that looks like this:
 
 *You can find this file named `deployment.yaml` in the base folder of this tutorial's repository.*
@@ -245,4 +241,62 @@ spec:
 ```
 
 Make sure you replace `YOUR_CONTAINER_REGISTRY` and `IMAGE_NAME` with your dockerhub username and a suitable name e.g. "bobsmith/cassava".
+
+We can apply this configuration file to our Kubernetes cluster just like we would for any other Kubernetes object using:
+
+```bash
+kubectl create -f deployment.yaml
+```
+
+To check our deployment is up and running we can run:
+
+```bash
+kubectl get pods
+```
+
+We should see `STATUS = Running` once our deployment has finalized.
+
+### Testing the Deployment
+
+Now that our model is up and running on a Kubernetes cluster (via Seldon Core), we can send some test inference requests to make sure it's working.
+
+To do this, we simply run the `test.py` file in the following way:
+
+```bash
+python test.py --remote
+```
+
+This script will randomly select some test samples, send them to the cluster, gather the predictions and then plot them for us.
+
+**A note on running this yourself:**
+*This example is set up to connect to a kubernetes cluster running locally on your machine. If yours is local too, you'll need to make sure you [port forward](https://docs.seldon.io/projects/seldon-core/en/latest/install/kind.html#local-port-forwarding) before sending requests. If your cluster is remote, you'll need to change the `inference_url` variable on line 21 of `test.py`.*
+
+Having deployed our model to kubernetes and tested it, our setup now looks like this:
+![step_4](img/step_4.png)
+
+## Scaling the Model
+
+Our model is now running in a production environment and able to handle requests from external sources. This is awesome but what happens as the number of requests being sent to our model starts to increase? Eventually, we'll reach the limit of what a single server can handle. Thankfully, we can get around this problem by scaling our model [horizontally](https://en.wikipedia.org/wiki/Scalability#Horizontal_or_scale_out).
+
+Kubernetes and Seldon Core make this really easy to do by simply running:
+
+```bash
+kubectl scale sdep cassava --replicas=3
+```
+
+We can replace the `--replicas=3` with any number we want to scale to. 
+
+To watch the servers scaling out we can run:
+
+```bash
+kubectl get pods --watch
+```
+
+Once the new replicas have finished rolling out, our setup now looks like this:
+![step_5](img/step_5.png)
+
+
+In this tutorial we've scaled the model out manually to show how it works. In a real environment we'd want to set up [auto-scaling](https://docs.seldon.io/projects/seldon-core/en/latest/graph/scaling.html#autoscaling-seldon-deployments) to make sure our prediction API is always online and performing as expected.
+
+
 
